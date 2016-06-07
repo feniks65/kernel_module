@@ -1,1 +1,4 @@
 New README
+
+
+gcc -DMODULE -D__KERNEL__ -isystem /lib/modules/$(uname -r)/build/include -c hello.c -o hello.ko
