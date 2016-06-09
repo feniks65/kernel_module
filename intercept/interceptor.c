@@ -2,6 +2,8 @@
 #include <asm/unistd.h>
 #include <linux/linkage.h>
 
+MODULE_LICENSE("GPL");
+
 //unsigned long *sys_call_table;
 typedef asmlinkage int (*syscall_t)(void *a0,...);
 
@@ -35,15 +37,18 @@ static uint64_t **aquire_sys_call_table(void)
 static void disable_page_protection(void)
 {
 	unsigned long value;
+
+	long mask = 0x00010000;
+
 	printk("DISSS 1");
 
 	asm volatile("mov %%cr0,%0" : "=r" (value));
 	
 	printk("DISS 2");
 
-	if(value & 0x00010000)
+	if(value & mask)
 	{
-		value &= ~0x00010000;
+		value &= ~mask;
 		printk("DISS 3");
 
 		asm volatile("mov %0,%%cr0" : "=r" (value));
@@ -64,7 +69,9 @@ static int __init lkm_init(void)
 {
 	printk("START Modulu");
 
-	disable_page_protection();
+//	disable_page_protection();
+
+	write_cr0(read_cr0() & (~ 0x10000));
 
 
 	printk("POINTER %p KONIEC pointer SYScallTable", sys_call_table);
@@ -86,7 +93,7 @@ static int __init lkm_init(void)
 
 static void __exit lkm_clean(void)
 {
-	sys_call_table[__NR_mkdir] = org_mkdir;
+//	sys_call_table[__NR_mkdir] = org_mkdir;
 }
 
 module_init(lkm_init);
