@@ -1,12 +1,19 @@
+#include <linux/init.h>
 #include <linux/module.h>
-#include <asm/unistd.h>
-#include <linux/linkage.h>
-
-MODULE_LICENSE("GPL");
-
-//unsigned long *sys_call_table;
-typedef asmlinkage int (*syscall_t)(void *a0,...);
-
+#include <linux/kernel.h> 
+#include <linux/errno.h> 
+#include <linux/types.h>
+#include <linux/unistd.h>
+#include <asm/cacheflush.h>  
+#include <asm/page.h>  
+#include <asm/current.h>
+#include <linux/sched.h>
+#include <linux/kallsyms.h>
+ 
+unsigned long *syscall_table = NULL; 
+ 
+asmlinkage int (*original_write)(unsigned int, const char __user *, size_t);
+ 
 extern void* sys_close;
 
 	void **sys_call_table = NULL;
@@ -32,69 +39,45 @@ static uint64_t **aquire_sys_call_table(void)
 	}
 
 	return NULL;
+} 
+ 
+asmlinkage int new_write(unsigned int fd, const char __user *buf, size_t count) {
+ 
+    // hijacked write
+ 
+    printk(KERN_ALERT "WRITE HIJACKED");
+ 
+    return (*original_write)(fd, buf, count);
 }
-
-static void disable_page_protection(void)
-{
-	unsigned long value;
-
-	long mask = 0x00010000;
-
-	printk("DISSS 1");
-
-	asm volatile("mov %%cr0,%0" : "=r" (value));
-	
-	printk("DISS 2");
-
-	if(value & mask)
-	{
-		value &= ~mask;
-		printk("DISS 3");
-
-		asm volatile("mov %0,%%cr0" : "=r" (value));
-		printk("DISS 4");
-	}
-
-
+ 
+static int init(void) {
+ 
+    printk(KERN_ALERT "\nHIJACK INIT\n");
+   
+    write_cr0 (read_cr0 () & (~ 0x10000));
+ 
+syscall_table= aquire_sys_call_table();
+ 
+    original_write = (void *)syscall_table[__NR_write];
+    syscall_table[__NR_write] = new_write;  
+ 
+    write_cr0 (read_cr0 () | 0x10000);
+ 
+    return 0;
 }
-
-
-int hacked_mkdir(const char* pathname, mode_t mode)
-{
-	printk("FAKE MKDIR WAS RUN!!!!!!!");
-	return 0;
+ 
+static void exit(void) {
+ 
+    write_cr0 (read_cr0 () & (~ 0x10000));
+ 
+    syscall_table[__NR_write] = original_write;  
+ 
+    write_cr0 (read_cr0 () | 0x10000);
+     
+    printk(KERN_ALERT "MODULE EXIT\n");
+ 
+    return;
 }
-
-static int __init lkm_init(void)
-{
-	printk("START Modulu");
-
-//	disable_page_protection();
-
-	write_cr0(read_cr0() & (~ 0x10000));
-
-
-	printk("POINTER %p KONIEC pointer SYScallTable", sys_call_table);
-	
-	sys_call_table = aquire_sys_call_table();
-
-	printk("POMIEDZY");
-
-	org_mkdir = sys_call_table[__NR_mkdir];
-
-	printk("Przed podmiana");
-
-	sys_call_table[__NR_mkdir] = hacked_mkdir;
-
-	printk("AFTER PODMIANA");
-	
-	return 0;
-}
-
-static void __exit lkm_clean(void)
-{
-//	sys_call_table[__NR_mkdir] = org_mkdir;
-}
-
-module_init(lkm_init);
-module_exit(lkm_clean);
+ 
+module_init(init);
+module_exit(exit);
