@@ -56,10 +56,10 @@ static int init(void) {
    
     write_cr0 (read_cr0 () & (~ 0x10000));
  
-syscall_table= aquire_sys_call_table();
+    syscall_table= aquire_sys_call_table();
  
     original_write = (void *)syscall_table[__NR_write];
-    syscall_table[__NR_write] = new_write;  
+    //syscall_table[__NR_write] = new_write;  
  
     write_cr0 (read_cr0 () | 0x10000);
  
@@ -70,7 +70,7 @@ static void exit(void) {
  
     write_cr0 (read_cr0 () & (~ 0x10000));
  
-    syscall_table[__NR_write] = original_write;  
+    //syscall_table[__NR_write] = original_write;  
  
     write_cr0 (read_cr0 () | 0x10000);
      
