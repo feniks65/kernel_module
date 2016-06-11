@@ -1,0 +1,12 @@
+unsigned long **find(void) {
+  unsigned long **sctable;
+  unsigned long int i = START_MEM;
+  while ( i < END_MEM) {
+    sctable = (unsigned long **)i;
+    if ( sctable[__NR_close] == (unsigned long *) sys_close) {
+      return &sctable[0];
+    }
+    i += sizeof(void *);
+  }
+  return NULL;
+}
