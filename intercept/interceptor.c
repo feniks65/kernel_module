@@ -13,8 +13,8 @@
 
 MODULE_LICENSE("GPL");
 
-#define START_MEM 0xc0000000
-#define END_MEM 0xd0000000
+#define START_MEM 0x80000000
+#define END_MEM 0x82000000
 
 unsigned long *syscall_table;
 
