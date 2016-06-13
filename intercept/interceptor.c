@@ -9,8 +9,12 @@
 #include <asm/current.h>
 #include <linux/sched.h>
 #include <linux/kallsyms.h>
+
+MODULE_LICENSE("GPL");
  
-unsigned long *syscall_table = NULL; 
+unsigned long *syscall_table = 0xffffffff81a001c0; 
+
+void (*org_syslog)(int priority, const char *format, ...);
  
 asmlinkage int (*original_write)(unsigned int, const char __user *, size_t);
  
@@ -32,7 +36,7 @@ static uint64_t **aquire_sys_call_table(void)
 
 		if(sct[__NR_close] == (uint64_t *)sys_close)
 		{
-			printk("\nsys_call_table found at 0x%p\n");
+			printk("\nsys_call_table found at 0x%p\n", sct);
 			return sct;
 		}
 		offset += sizeof(void*);
@@ -59,6 +63,17 @@ static int init(void) {
     syscall_table= aquire_sys_call_table();
  
     original_write = (void *)syscall_table[__NR_write];
+
+    org_syslog = (void*)syscall_table[__NR_syslog];
+
+    printk("PRZED PRINTEM");
+
+    (*org_syslog)(1, "PRINT Z ORYGINALNEGO SYSLOGA");
+
+    printk("PO PRINCIE");
+
+    //syscall_table[]
+
     //syscall_table[__NR_write] = new_write;  
  
     write_cr0 (read_cr0 () | 0x10000);
