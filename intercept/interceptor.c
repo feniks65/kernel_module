@@ -13,21 +13,21 @@
 
 MODULE_LICENSE("GPL");
 
-#define START_MEM 0x80000000
-#define END_MEM 0x82000000
+#define START_MEM 0xffffffff81a00000
+#define END_MEM 0xffffffff81b00000
 
-unsigned long *syscall_table;
+unsigned long long *syscall_table;
 
-unsigned long **find(void)
+unsigned long long **find(void)
 {
-	unsigned long **sctable;
-	unsigned long int i = START_MEM;
+	unsigned long long **sctable;
+	unsigned long long int i = START_MEM;
 
 	while( i < END_MEM)
 	{
-		sctable = (unsigned long **)i;
+		sctable = (unsigned long long **)i;
 
-		if(sctable[__NR_close] == (unsigned long *) sys_close)
+		if(sctable[__NR_close] == (unsigned long long *) sys_close)
 		{
 			return &sctable[0];
 		}
@@ -41,10 +41,10 @@ static int init(void) {
  
     printk(KERN_ALERT "\nHIJACK INIT\n");
 
-    syscall_table = (unsigned long *) find();
+    syscall_table = (unsigned long long *) find();
 
     if( syscall_table != NULL)
-	printk("SysCall table found at %x\n", (unsigned)syscall_table);
+	printk("SysCall table found at %llx\n", (unsigned)syscall_table);
     else
 	printk("Syscall table not found!\n");
 
