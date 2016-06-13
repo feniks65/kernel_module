@@ -4,74 +4,52 @@
 #include <linux/errno.h> 
 #include <linux/types.h>
 #include <linux/unistd.h>
-#include <asm/cacheflush.h>  
-#include <asm/page.h>  
 #include <asm/current.h>
 #include <linux/sched.h>
-#include <linux/kallsyms.h>
+#include <asm/cacheflush.h>  
+#include <asm/page.h>  
+#include <linux/sched.h>
+#include <linux/syscalls.h>
 
 MODULE_LICENSE("GPL");
- 
-unsigned long *syscall_table = 0xffffffff81a001c0; 
 
-void (*org_syslog)(int priority, const char *format, ...);
- 
-asmlinkage int (*original_write)(unsigned int, const char __user *, size_t);
- 
-extern void* sys_close;
+#define START_MEM 0xc0000000
+#define END_MEM 0xd0000000
 
-	void **sys_call_table = NULL;
-//extern syscall_t sys_call_table[];
+unsigned long *syscall_table;
 
-int (*org_mkdir)(const char* pathname, mode_t mode);
-
-static uint64_t **aquire_sys_call_table(void)
+unsigned long **find(void)
 {
-	uint64_t offset = PAGE_OFFSET;
-	uint64_t **sct;
+	unsigned long **sctable;
+	unsigned long int i = START_MEM;
 
-	while(offset < ULLONG_MAX)
+	while( i < END_MEM)
 	{
-		sct = (uint64_t **)offset;
+		sctable = (unsigned long **)i;
 
-		if(sct[__NR_close] == (uint64_t *)sys_close)
+		if(sctable[__NR_close] == (unsigned long *) sys_close)
 		{
-			printk("\nsys_call_table found at 0x%p\n", sct);
-			return sct;
+			return &sctable[0];
 		}
-		offset += sizeof(void*);
+		i += sizeof(void*);
+	
 	}
-
 	return NULL;
 } 
- 
-asmlinkage int new_write(unsigned int fd, const char __user *buf, size_t count) {
- 
-    // hijacked write
- 
-    printk(KERN_ALERT "WRITE HIJACKED");
- 
-    return (*original_write)(fd, buf, count);
-}
  
 static int init(void) {
  
     printk(KERN_ALERT "\nHIJACK INIT\n");
-   
+
+    syscall_table = (unsigned long *) find();
+
+    if( syscall_table != NULL)
+	printk("SysCall table found at %x\n", (unsigned)syscall_table);
+    else
+	printk("Syscall table not found!\n");
+
     write_cr0 (read_cr0 () & (~ 0x10000));
  
-    syscall_table= aquire_sys_call_table();
- 
-    original_write = (void *)syscall_table[__NR_write];
-
-    org_syslog = (void*)syscall_table[__NR_syslog];
-
-    printk("PRZED PRINTEM");
-
-    (*org_syslog)(1, "PRINT Z ORYGINALNEGO SYSLOGA");
-
-    printk("PO PRINCIE");
-
     //syscall_table[]
 
     //syscall_table[__NR_write] = new_write;  
