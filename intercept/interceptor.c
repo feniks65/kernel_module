@@ -18,6 +18,16 @@ MODULE_LICENSE("GPL");
 
 unsigned long long *syscall_table;
 
+
+asmlinkage int (*org_mkdir)(const char *pathname, mode_t mode);
+
+asmlinkage int hacked_mkdir(const char *pathname, mode_t mode)
+{
+	printk("MOJ MKDIR ZOSTAL URUCHIOMIONY!!!!!!!!!");
+	
+	return 0;
+}
+
 unsigned long long **find(void)
 {
 	unsigned long long **sctable;
@@ -50,9 +60,9 @@ static int init(void) {
 
     write_cr0 (read_cr0 () & (~ 0x10000));
  
-    //syscall_table[]
+    org_mkdir = syscall_table[__NR_mkdir];
 
-    //syscall_table[__NR_write] = new_write;  
+    syscall_table[__NR_mkdir] = hacked_mkdir;  
  
     write_cr0 (read_cr0 () | 0x10000);
  
@@ -63,7 +73,7 @@ static void exit(void) {
  
     write_cr0 (read_cr0 () & (~ 0x10000));
  
-    //syscall_table[__NR_write] = original_write;  
+    syscall_table[__NR_mkdir] = org_mkdir;  
  
     write_cr0 (read_cr0 () | 0x10000);
      
